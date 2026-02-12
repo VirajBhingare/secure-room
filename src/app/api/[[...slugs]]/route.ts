@@ -6,12 +6,12 @@ const ROOM_TTL_SECONDS = 10 * 60; // 10 Minutes (TTL : Time to Live)
 
 const rooms = new Elysia({ prefix: "/room" }).post("/create", async () => {
   const roomId = nanoid();
-  await redis.hset(`meta: ${roomId}`, {
+  await redis.hset(`meta:${roomId}`, {
     connected: [],
     createdAt: Date.now(),
   });
 
-  await redis.expire(`meta: ${roomId}`, ROOM_TTL_SECONDS);
+  await redis.expire(`meta:${roomId}`, ROOM_TTL_SECONDS);
 
   return { roomId };
 });
