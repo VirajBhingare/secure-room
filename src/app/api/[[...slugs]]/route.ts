@@ -1,7 +1,7 @@
 import { redis } from "@/lib/redis";
 import { Elysia } from "elysia";
 import { nanoid } from "nanoid";
-import { authMiddleware } from "./auth";
+import { authMiddleware } from "@/app/api/[[...slugs]]/auth";
 import { z } from "zod";
 
 const ROOM_TTL_SECONDS = 10 * 60; // 10 Minutes (TTL : Time to Live)
