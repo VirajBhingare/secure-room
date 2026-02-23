@@ -2,9 +2,11 @@
 
 import { useUsername } from "@/hooks/use-username";
 import { client } from "@/lib/client";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useRef, useState } from "react";
+import { format } from "date-fns";
+import { useRealtime } from "@/lib/realtime-client";
 
 const formatTimeRemaining = (seconds: number) => {
   const mins = Math.floor(seconds / 60);
@@ -23,6 +25,14 @@ const Room = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { username } = useUsername();
 
+  const { data: messages, refetch } = useQuery({
+    queryKey: ["messages", roomId],
+    queryFn: async () => {
+      const res = await client.messages.get({ query: { roomId } });
+      return res.data;
+    },
+  });
+
   const handleCopy = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
@@ -38,6 +48,18 @@ const Room = () => {
         { sender: username, text },
         { query: { roomId } }
       );
+
+      setInput("");
+    },
+  });
+
+  useRealtime({
+    channels: [roomId],
+    events: ["chat.message", "chat.destroy"],
+    onData: ({ event }) => {
+      if (event === "chat.message") {
+        refetch();
+      }
     },
   });
 
@@ -45,7 +67,6 @@ const Room = () => {
     if (!input.trim() && isPending) return;
 
     sendMessage({ text: input });
-    setInput("");
     inputRef.current?.focus();
   };
 
@@ -92,7 +113,38 @@ const Room = () => {
         </button>
       </header>
       {/* MESSAGES SECTION */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin"></div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+        {messages?.messages.length === 0 && (
+          <div className="flex justify-center items-center h-full">
+            <p className="text-zinc-600 text-sm font-mono">
+              No messages yet. Start the conversation now!
+            </p>
+          </div>
+        )}
+
+        {messages?.messages.map((msg) => (
+          <div key={msg.id} className="flex flex-col items-start">
+            <div className="max-w-[80%] group">
+              <div className="flex items-baseline gap-3 mb-1">
+                <span
+                  className={`text-sm font-bold ${
+                    msg.sender === username ? "text-green-500" : "text-blue-500"
+                  }`}
+                >
+                  {msg.sender === username ? "YOU" : msg.sender}
+                </span>
+
+                <span className="text-[10px] text-zinc-600">
+                  {format(msg.timestamp, "hh:mm a")}
+                </span>
+              </div>
+              <p className="text-sm text-zinc-300 leading-relaxed break-all">
+                {msg.text}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* INPUT SECTION */}
       <div className="p-4 border-t border-zinc-800 bg-zinc-900/30">
